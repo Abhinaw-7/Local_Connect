@@ -134,10 +134,26 @@ const deleteItem = async (req, res) => {
   }
 };
 
+// @desc    Get all marketplace items listed by a specific user
+// @route   GET /api/marketplace/user/:id
+// @access  Private
+const getItemsByUser = async (req, res) => {
+  try {
+    const items = await MarketplaceItem.find({ seller: req.params.id })
+      .populate('seller', 'name profilePhoto')
+      .sort({ createdAt: -1 });
+
+    res.json(items);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createItem,
   getItems,
   getItemById,
   updateItemStatus,
   deleteItem,
+  getItemsByUser,
 };

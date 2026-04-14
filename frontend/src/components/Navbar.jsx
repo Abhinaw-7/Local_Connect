@@ -59,7 +59,17 @@ const Navbar = () => {
       ),
       label: 'Alerts',
     },
-    { to: '/profile', icon: <User size={20} />, label: 'Profile' },
+    { 
+      to: '/profile', 
+      icon: user?.profilePhoto && user.profilePhoto !== 'no-photo.jpg' ? (
+        <img src={user.profilePhoto} alt="" className="nav-avatar" />
+      ) : (
+        <div className="nav-avatar-placeholder">
+          {user?.name?.charAt(0)?.toUpperCase()}
+        </div>
+      ), 
+      label: 'Profile' 
+    },
   ];
 
   const isActive = (path) => location.pathname === path;

@@ -6,8 +6,11 @@ const {
   getItemById,
   updateItemStatus,
   deleteItem,
+  getItemsByUser,
 } = require('../controllers/marketplaceController');
 const { protect } = require('../middlewares/authMiddleware');
+
+router.get('/user/:id', protect, getItemsByUser);
 
 router.route('/')
   .post(protect, createItem)

@@ -178,10 +178,27 @@ const addComment = async (req, res) => {
   }
 };
 
+// @desc    Get posts by a specific user
+// @route   GET /api/posts/user/:userId
+// @access  Private
+const getPostsByUser = async (req, res) => {
+  try {
+    const posts = await Post.find({ author: req.params.userId })
+      .populate('author', 'name profilePhoto location')
+      .populate('comments.user', 'name profilePhoto')
+      .sort({ createdAt: -1 });
+
+    res.json(posts);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createPost,
   getPosts,
   deletePost,
   toggleLikePost,
   addComment,
+  getPostsByUser,
 };

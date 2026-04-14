@@ -28,6 +28,8 @@ const upload = multer({
 // @desc Upload a single image to ImageKit
 // @access Private
 router.post('/', protect, upload.single('image'), async (req, res) => {
+  console.log('POST /api/upload reached');
+  console.log('File details:', req.file ? { name: req.file.originalname, size: req.file.size } : 'No file');
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded' });
@@ -50,6 +52,8 @@ router.post('/', protect, upload.single('image'), async (req, res) => {
 // @desc Upload multiple images to ImageKit
 // @access Private
 router.post('/multiple', protect, upload.array('images', 5), async (req, res) => {
+  console.log('POST /api/upload/multiple reached');
+  console.log('Files count:', req.files ? req.files.length : 0);
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: 'No files uploaded' });

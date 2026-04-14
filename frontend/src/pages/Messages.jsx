@@ -145,7 +145,7 @@ const Messages = () => {
                     <div className="conv-avatar">{u.name.charAt(0).toUpperCase()}</div>
                     <div className="conv-info">
                       <span className="conv-name">{u.name}</span>
-                      <span className="conv-preview">{u.location?.city || u.email}</span>
+                      <span className="conv-preview">{u.location?.city || 'Neighborhood member'}</span>
                     </div>
                   </div>
                 ))}
@@ -210,18 +210,27 @@ const Messages = () => {
               )}
               {messages.map((msg, i) => {
                 const isSent = msg.sender === user._id || msg.sender?._id === user._id;
-                const showDate = i === 0 || 
-                  new Date(msg.createdAt).toDateString() !== new Date(messages[i - 1].createdAt).toDateString();
+                const prevMsg = messages[i - 1];
+                const nextMsg = messages[i + 1];
+
+                const isPrevSameAuthor = prevMsg && (prevMsg.sender === msg.sender || prevMsg.sender?._id === msg.sender?._id);
+                const isNextSameAuthor = nextMsg && (nextMsg.sender === msg.sender || nextMsg.sender?._id === msg.sender?._id);
+                
+                const showDate = !prevMsg || 
+                  new Date(msg.createdAt).toDateString() !== new Date(prevMsg.createdAt).toDateString();
+                
                 return (
-                  <div key={msg._id}>
+                  <div key={msg._id} className="chat-msg-row">
                     {showDate && (
                       <div className="chat-date-divider">
                         <span>{dateLabel(msg.createdAt)}</span>
                       </div>
                     )}
-                    <div className={`chat-bubble ${isSent ? 'sent' : 'received'}`}>
-                      <p>{msg.content}</p>
-                      <span className="bubble-time">{timeFormat(msg.createdAt)}</span>
+                    <div className={`chat-bubble-container ${isSent ? 'sent' : 'received'} ${!isNextSameAuthor ? 'last-in-group' : ''} ${!isPrevSameAuthor ? 'first-in-group' : ''}`}>
+                      <div className="chat-bubble">
+                        <p>{msg.content}</p>
+                        <span className="bubble-time">{timeFormat(msg.createdAt)}</span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -229,16 +238,18 @@ const Messages = () => {
               <div ref={messagesEndRef} />
             </div>
             <form className="chat-input-area" onSubmit={handleSend}>
-              <input
-                type="text"
-                placeholder="Type a message..."
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                autoFocus
-              />
-              <button type="submit" className="btn btn-primary chat-send-btn" disabled={sending}>
-                <Send size={18} />
-              </button>
+              <div className="chat-input-pill">
+                <input
+                  type="text"
+                  placeholder="Message..."
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  autoFocus
+                />
+                <button type="submit" className="chat-send-btn" disabled={sending}>
+                  <Send size={20} />
+                </button>
+              </div>
             </form>
           </>
         ) : (

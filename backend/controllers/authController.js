@@ -79,6 +79,7 @@ const getUserProfile = async (req, res) => {
         phone: user.phone,
         location: user.location,
         profilePhoto: user.profilePhoto,
+        bio: user.bio,
         role: user.role,
       });
     } else {
@@ -99,6 +100,8 @@ const updateUserProfile = async (req, res) => {
     if (user) {
       user.name = req.body.name || user.name;
       user.phone = req.body.phone || user.phone;
+      user.profilePhoto = req.body.profilePhoto || user.profilePhoto;
+      user.bio = req.body.bio !== undefined ? req.body.bio : user.bio;
 
       if (req.body.location) {
         user.location = {
@@ -128,6 +131,8 @@ const updateUserProfile = async (req, res) => {
         email: updatedUser.email,
         phone: updatedUser.phone,
         location: updatedUser.location,
+        profilePhoto: updatedUser.profilePhoto,
+        bio: updatedUser.bio,
         token: generateToken(updatedUser._id),
       });
     } else {
@@ -156,7 +161,7 @@ const getAllCommunityUsers = async (req, res) => {
     }
 
     const users = await User.find(query)
-      .select('name email phone profilePhoto location role')
+      .select('name profilePhoto bio location role')
       .sort({ createdAt: -1 });
 
     // Sort local users first (same pincode > same city > others)
@@ -181,7 +186,7 @@ const getAllCommunityUsers = async (req, res) => {
 const getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
-      .select('name email phone profilePhoto location role createdAt');
+      .select('name profilePhoto bio location role createdAt');
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });

@@ -31,6 +31,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: 'no-photo.jpg',
     },
+    bio: {
+      type: String,
+      maxlength: 150,
+      default: '',
+    },
     location: {
       city: String,
       area: String,

@@ -85,7 +85,11 @@ const People = () => {
                 <span className="city-badge"><MapPin size={11} /> Same City</span>
               )}
               <div className="person-avatar">
-                {u.name?.charAt(0)?.toUpperCase() || '?'}
+                {u.profilePhoto && u.profilePhoto !== 'no-photo.jpg' ? (
+                  <img src={u.profilePhoto} alt={u.name} className="person-avatar-img" />
+                ) : (
+                  u.name?.charAt(0)?.toUpperCase() || '?'
+                )}
               </div>
               <div className="person-info">
                 <h3>{u.name}</h3>
@@ -95,7 +99,6 @@ const People = () => {
                     {u.location.pincode ? ` - ${u.location.pincode}` : ''}
                   </p>
                 )}
-                <p className="person-email">{u.email}</p>
               </div>
               <div className="person-actions">
                 <Link to={`/user/${u._id}`} className="btn btn-secondary btn-small">

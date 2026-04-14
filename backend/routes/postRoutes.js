@@ -6,12 +6,15 @@ const {
   deletePost,
   toggleLikePost,
   addComment,
+  getPostsByUser,
 } = require('../controllers/postController');
 const { protect } = require('../middlewares/authMiddleware');
 
 router.route('/')
   .post(protect, createPost)
   .get(protect, getPosts);
+
+router.route('/user/:userId').get(protect, getPostsByUser);
 
 router.route('/:id')
   .delete(protect, deletePost);

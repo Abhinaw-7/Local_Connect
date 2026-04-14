@@ -157,7 +157,26 @@ const Home = () => {
       )}
 
       {loading ? (
-        <div className="page-loader"><div className="spinner"></div></div>
+        <div className="posts-list">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="skeleton-post">
+              <div className="skeleton-header">
+                <div className="skeleton skeleton-avatar" />
+                <div className="skeleton-meta">
+                  <div className="skeleton skeleton-line medium" />
+                  <div className="skeleton skeleton-line short" />
+                </div>
+              </div>
+              <div className="skeleton skeleton-line" />
+              <div className="skeleton skeleton-line" />
+              <div className="skeleton skeleton-image" />
+              <div className="skeleton-footer">
+                <div className="skeleton skeleton-action" />
+                <div className="skeleton skeleton-action" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : posts.length === 0 ? (
         <div className="empty-state">
           <MapPin size={32} />

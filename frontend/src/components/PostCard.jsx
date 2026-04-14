@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, MessageCircle, Trash2, Send, MapPin, Clock } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Send, MapPin, Clock, MoreHorizontal } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import API from '../api';
 
@@ -9,7 +9,7 @@ const typeColors = {
   announcement: '#f59e0b',
   event: '#8b5cf6',
   question: '#3b82f6',
-  general: '#6b7280',
+  general: '#6366f1',
 };
 
 const urgencyLabels = {
@@ -26,19 +26,27 @@ const PostCard = ({ post, onDelete, onUpdate }) => {
   const [likes, setLikes] = useState(post.likes || []);
   const [comments, setComments] = useState(post.comments || []);
   const [liking, setLiking] = useState(false);
+  const [commenting, setCommenting] = useState(false);
 
   const isLiked = likes.includes(user?._id);
   const isAuthor = post.author?._id === user?._id;
 
   const handleLike = async () => {
-    if (liking) return;
+    if (liking || !user) return;
     setLiking(true);
+    // Optimistic UI update
+    setLikes((prev) =>
+      prev.includes(user._id)
+        ? prev.filter((id) => id !== user._id)
+        : [...prev, user._id]
+    );
     try {
       const { data } = await API.put(`/posts/${post._id}/like`);
       setLikes(data);
       if (onUpdate) onUpdate(post._id, { likes: data });
     } catch (err) {
       console.error(err);
+      setLikes(post.likes || []); // Revert on failure
     } finally {
       setLiking(false);
     }
@@ -46,7 +54,8 @@ const PostCard = ({ post, onDelete, onUpdate }) => {
 
   const handleComment = async (e) => {
     e.preventDefault();
-    if (!commentText.trim()) return;
+    if (!commentText.trim() || commenting || !user) return;
+    setCommenting(true);
     try {
       const { data } = await API.post(`/posts/${post._id}/comments`, { text: commentText });
       setComments(data);
@@ -54,11 +63,13 @@ const PostCard = ({ post, onDelete, onUpdate }) => {
       if (onUpdate) onUpdate(post._id, { comments: data });
     } catch (err) {
       console.error(err);
+    } finally {
+      setCommenting(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm('Delete this post?')) return;
+    if (!window.confirm('Delete this post?')) return;
     try {
       await API.delete(`/posts/${post._id}`);
       if (onDelete) onDelete(post._id);
@@ -79,93 +90,116 @@ const PostCard = ({ post, onDelete, onUpdate }) => {
   };
 
   return (
-    <div className="post-card">
+    <div className="post-card premium-card">
+      {/* Header */}
       <div className="post-header">
         <div className="post-author-info">
           <Link to={`/user/${post.author?._id}`} className="post-avatar-link">
             <div className="post-avatar">
-              {post.author?.name?.charAt(0)?.toUpperCase() || '?'}
+              {post.author?.profilePhoto && post.author.profilePhoto !== 'no-photo.jpg' ? (
+                <img src={post.author.profilePhoto} alt="" className="ig-avatar-img" />
+              ) : (
+                post.author?.name?.charAt(0)?.toUpperCase() || '?'
+              )}
             </div>
           </Link>
-          <div>
+          <div className="post-author-meta">
             <Link to={`/user/${post.author?._id}`} className="post-author-link">
-              <h4 className="post-author-name">{post.author?.name || 'Unknown'}</h4>
+              <span className="post-author-name">{post.author?.name || 'Unknown User'}</span>
             </Link>
-            <div className="post-meta">
-              <span className="post-time">
-                <Clock size={13} /> {timeAgo(post.createdAt)}
-              </span>
+            <div className="post-meta-sub">
               {post.location?.city && (
                 <span className="post-location">
-                  <MapPin size={13} /> {post.location.area ? `${post.location.area}, ` : ''}{post.location.city}
+                  {post.location.city} • 
                 </span>
               )}
+              <span className="post-time">{timeAgo(post.createdAt)}</span>
             </div>
           </div>
         </div>
-        <div className="post-header-right">
-          <span
-            className="post-type-badge"
-            style={{ background: typeColors[post.type] || typeColors.general }}
-          >
+        
+        <div className="post-header-actions">
+          <span className="post-type-pill" style={{ borderColor: typeColors[post.type] || typeColors.general, color: typeColors[post.type] || typeColors.general }}>
             {post.type}
           </span>
-          {post.urgency && post.urgency !== 'low' && (
-            <span className="post-urgency">{urgencyLabels[post.urgency]}</span>
-          )}
           {isAuthor && (
-            <button className="post-delete-btn" onClick={handleDelete} title="Delete post">
+            <button className="post-more-btn" onClick={handleDelete} title="Delete post">
               <Trash2 size={16} />
             </button>
           )}
         </div>
       </div>
 
-      <p className="post-content">{post.content}</p>
+      {/* Content */}
+      <div className="post-body">
+        <p className="post-text">{post.content}</p>
+      </div>
 
+      {/* Media */}
       {post.images && post.images.length > 0 && (
-        <div className="post-images">
+        <div className="post-media-container">
           {post.images.map((img, i) => (
-            <img key={i} src={img} alt="Post" className="post-image" />
+            <img key={i} src={img} alt="Post media" className="post-media-img" />
           ))}
+          {post.images.length > 1 && <div className="media-count">1/{post.images.length}</div>}
         </div>
       )}
 
-      <div className="post-actions">
-        <button
-          className={`action-btn like-btn ${isLiked ? 'liked' : ''}`}
-          onClick={handleLike}
-        >
-          <Heart size={18} fill={isLiked ? 'currentColor' : 'none'} />
-          <span>{likes.length}</span>
-        </button>
-        <button
-          className="action-btn comment-btn"
-          onClick={() => setShowComments(!showComments)}
-        >
-          <MessageCircle size={18} />
-          <span>{comments.length}</span>
-        </button>
+      {/* Interactions */}
+      <div className="post-interactions">
+        <div className="interaction-icons">
+          <button 
+            className={`interaction-btn like ${isLiked ? 'liked' : ''}`} 
+            onClick={handleLike} 
+            disabled={liking}
+          >
+            <Heart size={24} fill={isLiked ? 'var(--accent)' : 'none'} color={isLiked ? 'var(--accent)' : 'currentColor'} />
+          </button>
+          <button className="interaction-btn" onClick={() => setShowComments(!showComments)}>
+            <MessageCircle size={24} />
+          </button>
+        </div>
+        
+        <div className="post-stats">
+          <span className="likes-count"><strong>{likes.length}</strong> {likes.length === 1 ? 'like' : 'likes'}</span>
+        </div>
+
+        {/* <div className="post-caption">
+          <Link to={`/user/${post.author?._id}`} className="caption-username">
+            {post.author?.name}
+          </Link>
+          <span className="caption-text">{post.content}</span>
+        </div> */}
+
+        {comments.length > 0 && !showComments && (
+          <button className="view-comments-btn" onClick={() => setShowComments(true)}>
+            View all {comments.length} comments
+          </button>
+        )}
       </div>
 
+      {/* Comments Section */}
       {showComments && (
-        <div className="post-comments">
-          {comments.map((c, i) => (
-            <div key={i} className="comment">
-              <span className="comment-author">{c.user?.name || 'User'}</span>
-              <span className="comment-text">{c.text}</span>
-            </div>
-          ))}
-          <form className="comment-form" onSubmit={handleComment}>
+        <div className="post-comments-section">
+          <div className="comments-list">
+            {comments.map((c, i) => (
+              <div key={i} className="comment-item">
+                <span className="comment-username">{c.user?.name || 'User'}</span>
+                <span className="comment-body">{c.text}</span>
+              </div>
+            ))}
+          </div>
+          
+          <form className="comment-input-row" onSubmit={handleComment}>
             <input
               type="text"
-              placeholder="Write a comment..."
+              placeholder="Add a comment..."
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
-              className="comment-input"
+              disabled={commenting}
             />
-            <button type="submit" className="comment-send">
-              <Send size={16} />
+            <button type="submit" disabled={!commentText.trim() || commenting}>
+              {commenting ? '...' : 'Post'}
             </button>
           </form>
         </div>
