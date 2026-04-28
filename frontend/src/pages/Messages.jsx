@@ -1,46 +1,40 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import { Send, MessageCircle, ArrowLeft, Users, Search } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { Send, User, MessageCircle, ChevronLeft, Search } from 'lucide-react';
 import API from '../api';
 import { useAuth } from '../context/AuthContext';
 
 const Messages = () => {
-  const { user } = useAuth();
-  const [searchParams] = useSearchParams();
+  const { user: currentUser } = useAuth();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const targetUserId = queryParams.get('user');
+  const targetUserName = queryParams.get('name');
+  const targetUserUsername = queryParams.get('username');
+
   const [conversations, setConversations] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [text, setText] = useState('');
+  const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [showSearch, setShowSearch] = useState(false);
-  const messagesEndRef = useRef(null);
-
-  // Check URL params for deep-link to a conversation
-  useEffect(() => {
-    const userId = searchParams.get('user');
-    const userName = searchParams.get('name');
-    if (userId && userName) {
-      setSelectedUser({ _id: userId, name: userName });
-    }
-  }, [searchParams]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [search, setSearch] = useState('');
+  
+  const scrollRef = useRef();
 
   useEffect(() => {
     fetchConversations();
   }, []);
 
   useEffect(() => {
-    if (selectedUser) {
-      fetchMessages(selectedUser._id);
-      const interval = setInterval(() => fetchMessages(selectedUser._id), 3000);
-      return () => clearInterval(interval);
+    if (targetUserId) {
+      setSelectedUser({ _id: targetUserId, name: targetUserName, username: targetUserUsername });
+      fetchMessages(targetUserId);
     }
-  }, [selectedUser]);
+  }, [targetUserId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const fetchConversations = async () => {
@@ -55,211 +49,161 @@ const Messages = () => {
   };
 
   const fetchMessages = async (userId) => {
+    setLoadingMessages(true);
     try {
       const { data } = await API.get(`/messages/${userId}`);
       setMessages(data);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoadingMessages(false);
     }
   };
 
-  const handleSend = async (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!text.trim() || !selectedUser || sending) return;
-    setSending(true);
+    if (!newMessage.trim() || !selectedUser) return;
+
     try {
-      await API.post('/messages', { receiverId: selectedUser._id, content: text });
-      setText('');
-      fetchMessages(selectedUser._id);
+      const { data } = await API.post('/messages', {
+        receiverId: selectedUser._id,
+        content: newMessage,
+      });
+      setMessages([...messages, data]);
+      setNewMessage('');
       fetchConversations(); // Refresh sidebar
     } catch (err) {
       console.error(err);
-    } finally {
-      setSending(false);
     }
   };
 
-  const handleSearchUsers = async () => {
-    if (!searchQuery.trim()) return;
-    try {
-      const { data } = await API.get('/auth/users', { params: { search: searchQuery } });
-      setSearchResults(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const startConversation = (u) => {
-    setSelectedUser({ _id: u._id, name: u.name });
-    setShowSearch(false);
-    setSearchQuery('');
-    setSearchResults([]);
-  };
-
-  const timeFormat = (date) => {
-    return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const dateLabel = (date) => {
-    const d = new Date(date);
-    const today = new Date();
-    if (d.toDateString() === today.toDateString()) return 'Today';
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-  };
+  const filteredConversations = conversations.filter(conv => 
+    conv.user?.name?.toLowerCase().includes(search.toLowerCase()) ||
+    conv.user?.username?.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="messages-page">
+      {/* Sidebar / Conversations Panel */}
       <div className={`conversations-panel ${selectedUser ? 'hidden-mobile' : ''}`}>
         <div className="conv-panel-header">
-          <h3><MessageCircle size={20} /> Chats</h3>
-          <button
-            className="btn btn-primary btn-small"
-            onClick={() => setShowSearch(!showSearch)}
-            title="Start new conversation"
-          >
-            <Users size={14} /> New
-          </button>
+          <h3><MessageCircle size={18} /> Messages</h3>
+        </div>
+        
+        <div className="search-bar conv-search">
+          <Search size={16} className="search-icon" />
+          <input 
+            type="text" 
+            placeholder="Search chats..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
-        {showSearch && (
-          <div className="conv-search">
-            <div className="conv-search-input">
-              <input
-                type="text"
-                placeholder="Search users..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearchUsers()}
-              />
-              <button className="btn btn-small btn-secondary" onClick={handleSearchUsers}>
-                <Search size={14} />
-              </button>
-            </div>
-            {searchResults.length > 0 && (
-              <div className="conv-search-results">
-                {searchResults.map((u) => (
-                  <div key={u._id} className="conv-item" onClick={() => startConversation(u)}>
-                    <div className="conv-avatar">{u.name.charAt(0).toUpperCase()}</div>
-                    <div className="conv-info">
-                      <span className="conv-name">{u.name}</span>
-                      <span className="conv-preview">{u.location?.city || 'Neighborhood member'}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {loading ? (
-          <div className="page-loader"><div className="spinner"></div></div>
-        ) : conversations.length === 0 && !showSearch ? (
-          <div className="empty-text-wrap">
-            <p className="empty-text">No conversations yet</p>
-            <button className="btn btn-primary btn-small" onClick={() => setShowSearch(true)}>
-              <Users size={14} /> Find people
-            </button>
-          </div>
-        ) : (
-          <div className="conv-list">
-            {conversations.map((conv) => (
+        <div className="conv-list">
+          {loading ? (
+            <div className="spinner-center"><div className="spinner-small"></div></div>
+          ) : filteredConversations.length === 0 ? (
+            <div className="empty-text">No conversations yet</div>
+          ) : (
+            filteredConversations.map((conv) => (
               <div
                 key={conv._id}
-                className={`conv-item ${selectedUser?._id === conv._id ? 'active' : ''}`}
-                onClick={() => setSelectedUser({ _id: conv._id, name: conv.user.name })}
+                className={`conv-item ${selectedUser?._id === conv.user?._id ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedUser(conv.user);
+                  fetchMessages(conv.user._id);
+                }}
               >
-                <div className="conv-avatar">{conv.user.name.charAt(0).toUpperCase()}</div>
-                <div className="conv-info">
-                  <span className="conv-name">{conv.user.name}</span>
-                  <span className="conv-preview">
-                    {conv.lastMessage.content.length > 35
-                      ? conv.lastMessage.content.substring(0, 35) + '...'
-                      : conv.lastMessage.content}
-                  </span>
+                <div className="conv-avatar">
+                  {conv.user?.profilePhoto && conv.user.profilePhoto !== 'no-photo.jpg' ? (
+                    <img src={conv.user.profilePhoto} alt="" />
+                  ) : (
+                    conv.user?.name?.charAt(0).toUpperCase()
+                  )}
                 </div>
-                <span className="conv-time">{dateLabel(conv.lastMessage.createdAt)}</span>
+                <div className="conv-info">
+                  <span className="conv-name">{conv.user?.name}</span>
+                  <span className="conv-preview">{conv.lastMessage.content}</span>
+                </div>
               </div>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
       </div>
 
+      {/* Chat Area / Chat Panel */}
       <div className={`chat-panel ${!selectedUser ? 'hidden-mobile' : ''}`}>
         {selectedUser ? (
           <>
             <div className="chat-header">
               <button className="back-btn" onClick={() => setSelectedUser(null)}>
-                <ArrowLeft size={20} />
+                <ChevronLeft />
               </button>
-              <Link to={`/user/${selectedUser._id}`} className="chat-header-link">
-                <div className="chat-header-avatar">{selectedUser.name.charAt(0).toUpperCase()}</div>
-                <div>
-                  <h4>{selectedUser.name}</h4>
-                  <span className="chat-header-subtitle">Tap to view profile</span>
-                </div>
-              </Link>
+              <div className="chat-header-avatar">
+                {selectedUser.profilePhoto && selectedUser.profilePhoto !== 'no-photo.jpg' ? (
+                  <img src={selectedUser.profilePhoto} alt="" />
+                ) : (
+                  selectedUser.name?.charAt(0).toUpperCase()
+                )}
+              </div>
+              <div>
+                <h4>{selectedUser.name}</h4>
+                {selectedUser.username && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--primary-light)', display: 'block', marginTop: '-2px' }}>
+                    @{selectedUser.username}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="chat-messages">
-              {messages.length === 0 && (
-                <div className="chat-empty-inline">
-                  <p>No messages yet. Say hello! 👋</p>
-                </div>
-              )}
-              {messages.map((msg, i) => {
-                const isSent = msg.sender === user._id || msg.sender?._id === user._id;
-                const prevMsg = messages[i - 1];
-                const nextMsg = messages[i + 1];
 
-                const isPrevSameAuthor = prevMsg && (prevMsg.sender === msg.sender || prevMsg.sender?._id === msg.sender?._id);
-                const isNextSameAuthor = nextMsg && (nextMsg.sender === msg.sender || nextMsg.sender?._id === msg.sender?._id);
-                
-                const showDate = !prevMsg || 
-                  new Date(msg.createdAt).toDateString() !== new Date(prevMsg.createdAt).toDateString();
-                
-                return (
-                  <div key={msg._id} className="chat-msg-row">
-                    {showDate && (
-                      <div className="chat-date-divider">
-                        <span>{dateLabel(msg.createdAt)}</span>
+            <div className="chat-messages">
+              {loadingMessages ? (
+                <div className="spinner-center"><div className="spinner-small"></div></div>
+              ) : (
+                <>
+                  {messages.map((msg, idx) => {
+                    const isSent = msg.sender === currentUser?._id;
+                    return (
+                      <div key={msg._id} className={`chat-bubble-container ${isSent ? 'sent' : 'received'}`}>
+                        <div className="chat-bubble">
+                          <p>{msg.content}</p>
+                          <span className="bubble-time">
+                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
                       </div>
-                    )}
-                    <div className={`chat-bubble-container ${isSent ? 'sent' : 'received'} ${!isNextSameAuthor ? 'last-in-group' : ''} ${!isPrevSameAuthor ? 'first-in-group' : ''}`}>
-                      <div className="chat-bubble">
-                        <p>{msg.content}</p>
-                        <span className="bubble-time">{timeFormat(msg.createdAt)}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
+                    );
+                  })}
+                  <div ref={scrollRef} />
+                </>
+              )}
             </div>
-            <form className="chat-input-area" onSubmit={handleSend}>
+
+            <form className="chat-input-area" onSubmit={handleSendMessage}>
               <div className="chat-input-pill">
                 <input
                   type="text"
                   placeholder="Message..."
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  autoFocus
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
                 />
-                <button type="submit" className="chat-send-btn" disabled={sending}>
-                  <Send size={20} />
-                </button>
               </div>
+              <button type="submit" className="chat-send-btn" disabled={!newMessage.trim()}>
+                <Send size={20} />
+              </button>
             </form>
           </>
         ) : (
           <div className="chat-empty">
-            <MessageCircle size={48} />
+            <div className="chat-empty-icon">
+              <MessageCircle size={48} strokeWidth={1} />
+            </div>
             <h3>Your Messages</h3>
-            <p>Select a conversation or start a new one</p>
-            <Link to="/people" className="btn btn-primary" style={{ marginTop: '12px' }}>
-              <Users size={16} /> Find People
-            </Link>
+            <p>Send private photos and messages to a neighbor.</p>
+            <button className="btn btn-primary btn-small" onClick={() => navigate('/people')}>
+              New Message
+            </button>
           </div>
         )}
       </div>

@@ -14,7 +14,7 @@ const sendMessage = async (req, res) => {
       content,
     });
 
-    const populatedMessage = await newMessage.populate('sender receiver', 'name profilePhoto');
+    const populatedMessage = await newMessage.populate('sender receiver', 'name username profilePhoto');
 
     // Create notification for the receiver
     await Notification.create({
@@ -26,7 +26,9 @@ const sendMessage = async (req, res) => {
 
     // Socket.io integration to emit message in real time
     const io = req.app.get('io');
-    io.to(receiverId.toString()).emit('receive_message', populatedMessage);
+    if (io) {
+      io.to(receiverId.toString()).emit('receive_message', populatedMessage);
+    }
 
     res.status(201).json(populatedMessage);
   } catch (error) {
@@ -94,6 +96,7 @@ const getConversations = async (req, res) => {
         $project: {
           _id: 1,
           'user.name': 1,
+          'user.username': 1,
           'user.profilePhoto': 1,
           lastMessage: 1,
         },

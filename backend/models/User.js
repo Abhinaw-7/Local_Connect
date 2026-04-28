@@ -7,25 +7,21 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please add a name'],
     },
+    username: {
+      type: String,
+      required: [true, 'Please add a username'],
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
     email: {
       type: String,
       required: [true, 'Please add an email'],
       unique: true,
-      match: [
-        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-        'Please add a valid email',
-      ],
-    },
-    phone: {
-      type: String,
-      unique: true,
-      sparse: true,
     },
     password: {
       type: String,
       required: [true, 'Please add a password'],
-      minlength: 6,
-      select: false,
     },
     profilePhoto: {
       type: String,
@@ -33,22 +29,12 @@ const userSchema = new mongoose.Schema(
     },
     bio: {
       type: String,
-      maxlength: 150,
       default: '',
     },
     location: {
       city: String,
       area: String,
       pincode: String,
-      coordinates: {
-        type: {
-          type: String,
-          enum: ['Point'],
-        },
-        coordinates: {
-          type: [Number],
-        },
-      },
     },
     role: {
       type: String,
@@ -61,21 +47,22 @@ const userSchema = new mongoose.Schema(
       default: 'active',
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-// GeoJSON indexing for location-based queries
-userSchema.index({ 'location.coordinates': '2dsphere' });
-
 // Encrypt password using bcrypt
-userSchema.pre('save', async function () {
-  if (!this.isModified('password')) return;
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) {
+    next();
+  }
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
 
 // Match user entered password to hashed password in database
-userSchema.methods.matchPassword = async function (enteredPassword) {
+userSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 

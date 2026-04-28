@@ -126,7 +126,9 @@ const PostModal = ({ post, user, onClose, onPrev, onNext, hasPrev, hasNext }) =>
                 )}
               </div>
               <div>
-                <span className="ig-modal-author-name">{post.author?.name}</span>
+                <span className="ig-modal-author-name">
+                  {post.author?.username ? `@${post.author.username}` : post.author?.name}
+                </span>
                 {post.location?.city && (
                   <span className="ig-modal-location">
                     <MapPin size={11} /> {post.location.city}
@@ -170,7 +172,9 @@ const PostModal = ({ post, user, onClose, onPrev, onNext, hasPrev, hasNext }) =>
                       )}
                     </div>
                     <div className="ig-modal-comment-body">
-                      <span className="ig-modal-comment-author">{c.user?.name || 'User'}</span>
+                      <span className="ig-modal-comment-author">
+                        {c.user?.username ? `@${c.user.username}` : c.user?.name || 'User'}
+                      </span>
                       <span className="ig-modal-comment-text">{c.text}</span>
                     </div>
                   </div>
@@ -244,22 +248,7 @@ const UserProfile = () => {
   if (loading) {
     return (
       <div className="ig-profile-page">
-        <div className="skeleton-profile-header">
-          <div className="skeleton skeleton-profile-avatar" />
-          <div className="skeleton-profile-info">
-            <div className="skeleton skeleton-line medium" />
-            <div className="skeleton skeleton-line short" />
-            <div className="skeleton skeleton-line" />
-          </div>
-        </div>
-        <div className="ig-stats-bar">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="ig-stat">
-              <div className="skeleton skeleton-line" style={{ width: '40px' }} />
-              <div className="skeleton skeleton-line short" />
-            </div>
-          ))}
-        </div>
+        <div className="page-loader"><div className="spinner"></div></div>
       </div>
     );
   }
@@ -268,9 +257,7 @@ const UserProfile = () => {
     return (
       <div className="empty-state">
         <p>User not found.</p>
-        <Link to="/people" className="btn btn-primary" style={{ marginTop: '16px', display: 'inline-flex' }}>
-          Back to Community
-        </Link>
+        <Link to="/people" className="btn btn-primary">Back to Community</Link>
       </div>
     );
   }
@@ -281,7 +268,7 @@ const UserProfile = () => {
 
   return (
     <div className="ig-profile-page">
-      <button className="back-link" onClick={() => navigate(-1)} style={{ marginBottom: '16px' }}>
+      <button className="back-link" onClick={() => navigate(-1)} style={{ marginBottom: '16px', background: 'none', border: 'none', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
         <ArrowLeft size={18} /> Back
       </button>
 
@@ -317,6 +304,13 @@ const UserProfile = () => {
           </div>
           <div className="ig-profile-info">
             <h1 className="ig-username">{profile.name}</h1>
+            <p className="ig-user-handle">
+              {profile.username ? (
+                <span className="ig-handle-text">@{profile.username}</span>
+              ) : (
+                <span className="ig-handle-text ig-handle-missing">No username set</span>
+              )}
+            </p>
             {profile.location?.city && (
               <p className="ig-user-location">
                 <MapPin size={13} />
@@ -340,7 +334,7 @@ const UserProfile = () => {
         <div className="ig-stat-divider" />
         <div className="ig-stat">
           <span className="ig-stat-value">{totalLikes}</span>
-          <span className="ig-stat-label">Likes Recv'd</span>
+          <span className="ig-stat-label">Likes</span>
         </div>
         <div className="ig-stat-divider" />
         <div className="ig-stat">
@@ -352,7 +346,7 @@ const UserProfile = () => {
       {/* ── Actions / Tabs Header ── */}
       <div className="ig-tabs">
         <div className="ig-tab active">
-          <Grid3X3 size={16} /> {isOwnProfile ? 'Your Posts' : `${profile.name}'s Posts`}
+          <Grid3X3 size={16} /> {profile.name}'s Posts
         </div>
         {!isOwnProfile && (
           <Link 

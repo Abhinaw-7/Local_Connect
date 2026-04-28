@@ -1,22 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Users, MapPin, MessageCircle, Navigation } from 'lucide-react';
+import { Search, MapPin, MessageCircle, User as UserIcon } from 'lucide-react';
 import API from '../api';
 import { useAuth } from '../context/AuthContext';
-import LocationBanner from '../components/LocationBanner';
 
 const People = () => {
-  const { user } = useAuth();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
-  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    fetchUsers();
+  }, [search]);
 
   const fetchUsers = async () => {
-    setLoading(true);
     try {
-      const params = {};
-      if (search.trim()) params.search = search.trim();
-      const { data } = await API.get('/auth/users', { params });
+      const { data } = await API.get(`/auth/users?search=${search}`);
       setUsers(data);
     } catch (err) {
       console.error(err);
@@ -25,91 +25,80 @@ const People = () => {
     }
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    fetchUsers();
-  };
-
-  const isLocalUser = (u) => {
-    if (!user?.location?.pincode) return false;
-    return u.location?.pincode === user.location.pincode;
-  };
-
-  const isSameCity = (u) => {
-    if (!user?.location?.city) return false;
-    return u.location?.city === user.location.city && !isLocalUser(u);
-  };
+  const sortedUsers = [...users].sort((a, b) => {
+    const aIsLocal = a.location?.pincode && a.location.pincode === currentUser?.location?.pincode;
+    const bIsLocal = b.location?.pincode && b.location.pincode === currentUser?.location?.pincode;
+    if (aIsLocal && !bIsLocal) return -1;
+    if (!aIsLocal && bIsLocal) return 1;
+    return 0;
+  });
 
   return (
-    <div className="people-page">
-      <LocationBanner />
-
-      <div className="page-header">
-        <div>
-          <h2><Users size={24} /> Community</h2>
-          {user?.location?.city && (
-            <p className="page-subtitle">
-              <MapPin size={14} /> Local people shown first
-            </p>
-          )}
+    <div className="ig-people-page">
+      <div className="ig-people-header">
+        <h2>Explore Community</h2>
+        <div className="ig-search-container">
+          <Search className="ig-search-icon" size={16} />
+          <input
+            type="text"
+            placeholder="Search neighbors..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
       </div>
 
-      <form className="search-bar" onSubmit={handleSearch}>
-        <Search size={18} className="search-icon" />
-        <input
-          type="text"
-          placeholder="Search by name, city, area, or pincode..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <button type="submit" className="btn btn-primary">Search</button>
-      </form>
-
       {loading ? (
         <div className="page-loader"><div className="spinner"></div></div>
-      ) : users.length === 0 ? (
-        <div className="empty-state"><p>No users found.</p></div>
+      ) : sortedUsers.length === 0 ? (
+        <div className="empty-state">
+          <p>No results found for "{search}"</p>
+        </div>
       ) : (
-        <div className="people-grid">
-          {users.map((u) => (
-            <div key={u._id} className={`person-card ${isLocalUser(u) ? 'person-local' : isSameCity(u) ? 'person-city' : ''}`}>
-              {isLocalUser(u) && (
-                <span className="local-badge"><Navigation size={11} /> Neighbor</span>
-              )}
-              {isSameCity(u) && (
-                <span className="city-badge"><MapPin size={11} /> Same City</span>
-              )}
-              <div className="person-avatar">
-                {u.profilePhoto && u.profilePhoto !== 'no-photo.jpg' ? (
-                  <img src={u.profilePhoto} alt={u.name} className="person-avatar-img" />
-                ) : (
-                  u.name?.charAt(0)?.toUpperCase() || '?'
-                )}
-              </div>
-              <div className="person-info">
-                <h3>{u.name}</h3>
-                {u.location?.city && (
-                  <p className="person-location">
-                    <MapPin size={13} /> {u.location.area ? `${u.location.area}, ` : ''}{u.location.city}
-                    {u.location.pincode ? ` - ${u.location.pincode}` : ''}
-                  </p>
-                )}
-              </div>
-              <div className="person-actions">
-                <Link to={`/user/${u._id}`} className="btn btn-secondary btn-small">
-                  View Profile
+        <div className="ig-user-list">
+          {sortedUsers.map((u) => {
+            const isLocal = u.location?.pincode && u.location.pincode === currentUser?.location?.pincode;
+            return (
+              <div key={u._id} className={`ig-user-row ${isLocal ? 'ig-local-neighbor' : ''}`}>
+                <Link to={`/user/${u._id}`} className="ig-user-avatar-link">
+                  <div className={`ig-avatar-ring ${isLocal ? 'neighbor' : ''}`}>
+                    <div className="ig-avatar-small">
+                      {u.profilePhoto && u.profilePhoto !== 'no-photo.jpg' ? (
+                        <img src={u.profilePhoto} alt="" className="ig-avatar-img" />
+                      ) : (
+                        u.name?.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                  </div>
                 </Link>
-                <Link to={`/messages?user=${u._id}&name=${encodeURIComponent(u.name)}`} className="btn btn-primary btn-small">
-                  <MessageCircle size={14} /> Message
-                </Link>
+                
+                <div className="ig-user-info">
+                  <Link to={`/user/${u._id}`} className="ig-user-name-stack">
+                    <span className="ig-user-username">
+                      @{u.username || u.name.toLowerCase().replace(/\s+/g, '_')}
+                    </span>
+                    <span className="ig-user-fullname">
+                      {u.name} {isLocal && <span className="ig-neighbor-tag">• Neighbor</span>}
+                    </span>
+                  </Link>
+                  {u.location?.city && (
+                    <span className="ig-user-subtext">
+                      <MapPin size={10} /> {u.location.city}
+                    </span>
+                  )}
+                </div>
+
+                <div className="ig-user-actions">
+                  <Link 
+                    to={`/messages?user=${u._id}&name=${encodeURIComponent(u.name)}&username=${encodeURIComponent(u.username || '')}`} 
+                    className="ig-btn-message"
+                  >
+                    Message
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

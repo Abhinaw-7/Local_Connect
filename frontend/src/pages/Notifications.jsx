@@ -29,11 +29,28 @@ const Notifications = () => {
     }
   };
 
-  const handleMarkRead = async () => {
+  const handleMarkAllRead = async () => {
     try {
       await API.put('/notifications/read');
-      // Remove read notifications from the list so they disappear
-      setNotifications([]);
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleNotificationClick = async (notif) => {
+    if (notif.read) return;
+    try {
+      await API.put(`/notifications/${notif._id}/read`);
+      setNotifications(prev => prev.map(n => {
+        if (notif.type === 'message' && n.sender?._id === notif.sender?._id && n.type === 'message') {
+          return { ...n, read: true };
+        }
+        if (n._id === notif._id) {
+          return { ...n, read: true };
+        }
+        return n;
+      }));
     } catch (err) {
       console.error(err);
     }
@@ -53,7 +70,11 @@ const Notifications = () => {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const getNotifLink = (notif) => {
-    if (notif.type === 'message') return `/messages?user=${notif.sender?._id}&name=${encodeURIComponent(notif.sender?.name || '')}`;
+    if (notif.type === 'message') {
+      const name = notif.sender?.name || '';
+      const username = notif.sender?.username || '';
+      return `/messages?user=${notif.sender?._id}&name=${encodeURIComponent(name)}&username=${encodeURIComponent(username)}`;
+    }
     if (notif.type === 'like' || notif.type === 'comment') return '/';
     return '#';
   };
@@ -63,8 +84,8 @@ const Notifications = () => {
       <div className="page-header">
         <h2><Bell size={24} /> Notifications</h2>
         {unreadCount > 0 && (
-          <button className="btn btn-secondary" onClick={handleMarkRead}>
-            <Trash2 size={16} /> Clear All ({unreadCount})
+          <button className="btn btn-secondary" onClick={handleMarkAllRead}>
+            <CheckCheck size={16} /> Mark all read ({unreadCount})
           </button>
         )}
       </div>
@@ -84,17 +105,19 @@ const Notifications = () => {
               to={getNotifLink(notif)}
               className={`notif-item ${!notif.read ? 'unread' : ''}`}
               style={{ textDecoration: 'none', color: 'inherit' }}
+              onClick={() => handleNotificationClick(notif)}
             >
               <div className="notif-icon-wrap">
                 {iconMap[notif.type] || iconMap.default}
               </div>
               <div className="notif-content">
                 <p>
-                  <strong>{notif.sender?.name || 'Someone'}</strong>
+                  <strong>{notif.sender?.username ? `@${notif.sender.username}` : notif.sender?.name || 'Someone'}</strong>
                   {notif.type === 'like' ? ' liked your post' : notif.type === 'comment' ? ' commented on your post' : notif.type === 'message' ? ' sent you a message' : ` sent you a ${notif.type}`}
                 </p>
                 <span className="notif-time">{timeAgo(notif.createdAt)}</span>
               </div>
+              {!notif.read && <div className="unread-dot"></div>}
             </Link>
           ))}
         </div>

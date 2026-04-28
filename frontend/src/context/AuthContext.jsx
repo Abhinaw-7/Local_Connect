@@ -10,9 +10,9 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (stored) {
-      setUser(JSON.parse(stored));
+    const storedUser = JSON.parse(localStorage.getItem('user'));
+    if (storedUser) {
+      setUser(storedUser);
     }
     setLoading(false);
   }, []);
@@ -24,8 +24,8 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const register = async (name, email, password, phone) => {
-    const { data } = await API.post('/auth/register', { name, email, password, phone });
+  const register = async (name, email, password, location, username) => {
+    const { data } = await API.post('/auth/register', { name, email, password, location, username });
     localStorage.setItem('user', JSON.stringify(data));
     setUser(data);
     return data;
@@ -36,14 +36,15 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  const updateUser = (updatedData) => {
-    const newUser = { ...user, ...updatedData };
+  const updateProfile = (updatedUser) => {
+    const currentUser = JSON.parse(localStorage.getItem('user'));
+    const newUser = { ...currentUser, ...updatedUser };
     localStorage.setItem('user', JSON.stringify(newUser));
     setUser(newUser);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

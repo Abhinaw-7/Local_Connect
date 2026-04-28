@@ -12,13 +12,6 @@ const typeColors = {
   general: '#6366f1',
 };
 
-const urgencyLabels = {
-  low: '🟢 Low',
-  medium: '🟡 Medium',
-  high: '🟠 High',
-  critical: '🔴 Critical',
-};
-
 const PostCard = ({ post, onDelete, onUpdate }) => {
   const { user } = useAuth();
   const [commentText, setCommentText] = useState('');
@@ -34,7 +27,6 @@ const PostCard = ({ post, onDelete, onUpdate }) => {
   const handleLike = async () => {
     if (liking || !user) return;
     setLiking(true);
-    // Optimistic UI update
     setLikes((prev) =>
       prev.includes(user._id)
         ? prev.filter((id) => id !== user._id)
@@ -46,7 +38,7 @@ const PostCard = ({ post, onDelete, onUpdate }) => {
       if (onUpdate) onUpdate(post._id, { likes: data });
     } catch (err) {
       console.error(err);
-      setLikes(post.likes || []); // Revert on failure
+      setLikes(post.likes || []);
     } finally {
       setLiking(false);
     }
@@ -91,7 +83,6 @@ const PostCard = ({ post, onDelete, onUpdate }) => {
 
   return (
     <div className="post-card premium-card">
-      {/* Header */}
       <div className="post-header">
         <div className="post-author-info">
           <Link to={`/user/${post.author?._id}`} className="post-avatar-link">
@@ -105,14 +96,12 @@ const PostCard = ({ post, onDelete, onUpdate }) => {
           </Link>
           <div className="post-author-meta">
             <Link to={`/user/${post.author?._id}`} className="post-author-link">
-              <span className="post-author-name">{post.author?.name || 'Unknown User'}</span>
+              <span className="post-author-name">
+                {post.author?.username ? `@${post.author.username}` : post.author?.name || 'Unknown User'}
+              </span>
             </Link>
             <div className="post-meta-sub">
-              {post.location?.city && (
-                <span className="post-location">
-                  {post.location.city} • 
-                </span>
-              )}
+              {post.location?.city && <span className="post-location">{post.location.city} • </span>}
               <span className="post-time">{timeAgo(post.createdAt)}</span>
             </div>
           </div>
@@ -123,36 +112,28 @@ const PostCard = ({ post, onDelete, onUpdate }) => {
             {post.type}
           </span>
           {isAuthor && (
-            <button className="post-more-btn" onClick={handleDelete} title="Delete post">
+            <button className="post-more-btn" onClick={handleDelete}>
               <Trash2 size={16} />
             </button>
           )}
         </div>
       </div>
 
-      {/* Content */}
       <div className="post-body">
         <p className="post-text">{post.content}</p>
       </div>
 
-      {/* Media */}
       {post.images && post.images.length > 0 && (
         <div className="post-media-container">
           {post.images.map((img, i) => (
-            <img key={i} src={img} alt="Post media" className="post-media-img" />
+            <img key={i} src={img} alt="" className="post-media-img" />
           ))}
-          {post.images.length > 1 && <div className="media-count">1/{post.images.length}</div>}
         </div>
       )}
 
-      {/* Interactions */}
       <div className="post-interactions">
         <div className="interaction-icons">
-          <button 
-            className={`interaction-btn like ${isLiked ? 'liked' : ''}`} 
-            onClick={handleLike} 
-            disabled={liking}
-          >
+          <button className={`interaction-btn like ${isLiked ? 'liked' : ''}`} onClick={handleLike} disabled={liking}>
             <Heart size={24} fill={isLiked ? 'var(--accent)' : 'none'} color={isLiked ? 'var(--accent)' : 'currentColor'} />
           </button>
           <button className="interaction-btn" onClick={() => setShowComments(!showComments)}>
@@ -161,49 +142,28 @@ const PostCard = ({ post, onDelete, onUpdate }) => {
         </div>
         
         <div className="post-stats">
-          <span className="likes-count"><strong>{likes.length}</strong> {likes.length === 1 ? 'like' : 'likes'}</span>
+          <span className="likes-count"><strong>{likes.length}</strong> likes</span>
         </div>
 
-        {/* <div className="post-caption">
-          <Link to={`/user/${post.author?._id}`} className="caption-username">
-            {post.author?.name}
-          </Link>
-          <span className="caption-text">{post.content}</span>
-        </div> */}
-
-        {comments.length > 0 && !showComments && (
-          <button className="view-comments-btn" onClick={() => setShowComments(true)}>
-            View all {comments.length} comments
-          </button>
+        {showComments && (
+          <div className="post-comments-section">
+            <div className="comments-list">
+              {comments.map((c, i) => (
+                <div key={i} className="comment-item">
+                  <span className="comment-username">
+                    {c.user?.username ? `@${c.user.username}` : c.user?.name || 'User'}
+                  </span>
+                  <span className="comment-body">{c.text}</span>
+                </div>
+              ))}
+            </div>
+            <form className="comment-input-row" onSubmit={handleComment}>
+              <input type="text" placeholder="Add a comment..." value={commentText} onChange={(e) => setCommentText(e.target.value)} />
+              <button type="submit" disabled={!commentText.trim() || commenting}>Post</button>
+            </form>
+          </div>
         )}
       </div>
-
-      {/* Comments Section */}
-      {showComments && (
-        <div className="post-comments-section">
-          <div className="comments-list">
-            {comments.map((c, i) => (
-              <div key={i} className="comment-item">
-                <span className="comment-username">{c.user?.name || 'User'}</span>
-                <span className="comment-body">{c.text}</span>
-              </div>
-            ))}
-          </div>
-          
-          <form className="comment-input-row" onSubmit={handleComment}>
-            <input
-              type="text"
-              placeholder="Add a comment..."
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              disabled={commenting}
-            />
-            <button type="submit" disabled={!commentText.trim() || commenting}>
-              {commenting ? '...' : 'Post'}
-            </button>
-          </form>
-        </div>
-      )}
     </div>
   );
 };

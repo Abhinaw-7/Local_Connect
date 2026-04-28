@@ -1,32 +1,69 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { User, Mail, Lock, MapPin, AtSign, Check, X, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { UserPlus, Mail, Lock, User, Phone, MapPin } from 'lucide-react';
+import API from '../api';
 
 const Register = () => {
-  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '' });
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    username: '',
+    password: '',
+    location: { city: '', pincode: '' },
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState({ loading: false, available: null });
   const { register } = useAuth();
   const navigate = useNavigate();
 
+  // Username availability check logic
+  useEffect(() => {
+    if (!form.username || form.username.length < 3) {
+      setUsernameStatus({ loading: false, available: null });
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setUsernameStatus({ loading: true, available: null });
+      try {
+        const { data } = await API.get(`/auth/check-username/${form.username}`);
+        setUsernameStatus({ loading: false, available: data.available });
+      } catch (err) {
+        setUsernameStatus({ loading: false, available: null });
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [form.username]);
+
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'city' || name === 'pincode') {
+      setForm({ ...form, location: { ...form.location, [name]: value } });
+    } else if (name === 'username') {
+      // Basic cleaning for username
+      const cleanVal = value.toLowerCase().replace(/[^a-z0-9._]/g, '');
+      setForm({ ...form, [name]: cleanVal });
+    } else {
+      setForm({ ...form, [name]: value });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    if (form.password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (usernameStatus.available === false) {
+      setError('Username is already taken');
       return;
     }
+    setError('');
     setLoading(true);
     try {
-      await register(form.name, form.email, form.password, form.phone);
+      await register(form.name, form.email, form.password, form.location, form.username);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      setError(err.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -36,20 +73,17 @@ const Register = () => {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-header">
-          <div className="auth-logo">
-            <MapPin size={32} />
-          </div>
-          <h1>Join LocalConnect</h1>
-          <p>Connect with your local community</p>
+          <div className="auth-logo"><MapPin size={32} /></div>
+          <h1>Create Account</h1>
+          <p>Join your local neighborhood community</p>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="input-group">
-            <User size={18} className="input-icon" />
+            <User className="input-icon" size={18} />
             <input
-              id="register-name"
               type="text"
               name="name"
               placeholder="Full Name"
@@ -58,49 +92,85 @@ const Register = () => {
               required
             />
           </div>
+
           <div className="input-group">
-            <Mail size={18} className="input-icon" />
+            <AtSign className="input-icon" size={18} />
             <input
-              id="register-email"
+              type="text"
+              name="username"
+              placeholder="Unique Username (e.g. abhinav_12)"
+              value={form.username}
+              onChange={handleChange}
+              required
+            />
+            <div className="username-indicator">
+              {usernameStatus.loading ? (
+                <Loader2 size={14} className="animate-spin text-muted" />
+              ) : usernameStatus.available === true ? (
+                <Check size={16} className="text-success" />
+              ) : usernameStatus.available === false ? (
+                <X size={16} className="text-danger" />
+              ) : null}
+            </div>
+          </div>
+
+          <div className="input-group">
+            <Mail className="input-icon" size={18} />
+            <input
               type="email"
               name="email"
-              placeholder="Email address"
+              placeholder="Email Address"
               value={form.email}
               onChange={handleChange}
               required
             />
           </div>
+
           <div className="input-group">
-            <Phone size={18} className="input-icon" />
+            <Lock className="input-icon" size={18} />
             <input
-              id="register-phone"
-              type="tel"
-              name="phone"
-              placeholder="Phone Number (optional)"
-              value={form.phone}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="input-group">
-            <Lock size={18} className="input-icon" />
-            <input
-              id="register-password"
               type="password"
               name="password"
-              placeholder="Password (min 6 chars)"
+              placeholder="Password"
               value={form.password}
               onChange={handleChange}
               required
             />
           </div>
-          <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-            {loading ? <span className="spinner-small"></span> : <><UserPlus size={18} /> Create Account</>}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="input-group">
+              <MapPin className="input-icon" size={18} />
+              <input
+                type="text"
+                name="city"
+                placeholder="City"
+                value={form.location.city}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="input-group">
+              <input
+                type="text"
+                name="pincode"
+                placeholder="Pincode"
+                value={form.location.pincode}
+                onChange={handleChange}
+                required
+                style={{ paddingLeft: '16px' }}
+              />
+            </div>
+          </div>
+
+          <button type="submit" className="btn btn-primary btn-full" disabled={loading || usernameStatus.available === false}>
+            {loading ? <span className="spinner-small"></span> : 'Register'}
           </button>
         </form>
 
-        <p className="auth-footer">
-          Already have an account? <Link to="/login">Sign in</Link>
-        </p>
+        <div className="auth-footer">
+          Already have an account? <Link to="/login">Login</Link>
+        </div>
       </div>
     </div>
   );

@@ -2743,3 +2743,185 @@ input, textarea, select {
   cursor: not-allowed;
   transform: none;
 }
+
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  margin-left: auto;
+  box-shadow: 0 0 8px var(--primary-light);
+}
+
+.person-card.local-neighbor {
+  border: 1px solid var(--success) !important;
+  background: rgba(16, 185, 129, 0.03);
+  position: relative;
+  overflow: hidden;
+}
+
+.local-badge {
+  position: absolute;
+  top: 10px;
+  right: -25px;
+  background: var(--success);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 30px;
+  transform: rotate(45deg);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 1;
+}
+
+.local-text {
+  color: var(--success);
+  font-weight: 600;
+}
+
+/* ===== INSTAGRAM STYLE PEOPLE LIST ===== */
+.ig-people-page {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px 0;
+}
+
+.ig-people-header {
+  margin-bottom: 24px;
+  padding: 0 16px;
+}
+
+.ig-people-header h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.ig-search-container {
+  display: flex;
+  align-items: center;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  gap: 10px;
+}
+
+.ig-search-icon {
+  color: var(--text-muted);
+}
+
+.ig-search-container input {
+  background: none;
+  border: none;
+  color: var(--text);
+  outline: none;
+  font-size: 0.95rem;
+  width: 100%;
+}
+
+.ig-user-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ig-user-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  gap: 14px;
+  transition: background 0.2s ease;
+}
+
+.ig-user-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ig-avatar-ring {
+  padding: 2px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ig-avatar-ring.neighbor {
+  border: 2px solid var(--success);
+}
+
+.ig-avatar-small {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  overflow: hidden;
+  border: 2px solid var(--bg-card);
+}
+
+.ig-user-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ig-user-name-stack {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+}
+
+.ig-user-username {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.ig-user-fullname {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.ig-neighbor-tag {
+  color: var(--success);
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.ig-user-subtext {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.ig-user-actions {
+  flex-shrink: 0;
+}
+
+.ig-btn-message {
+  background: var(--bg-elevated);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 6px 16px;
+  border-radius: 8px;
+  transition: var(--transition);
+  border: 1px solid var(--border);
+}
+
+.ig-btn-message:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}

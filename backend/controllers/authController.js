@@ -1,24 +1,31 @@
 const User = require('../models/User');
-const generateToken = require('../utils/generateToken');
+const jwt = require('jsonwebtoken');
 
-// @desc    Register new user
+// Generate JWT
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: '30d',
+  });
+};
+
+// @desc    Register a new user
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password, phone } = req.body;
+    const { name, email, password, location, username } = req.body;
 
-    const userExists = await User.findOne({ email });
-
+    const userExists = await User.findOne({ $or: [{ email }, { username }] });
     if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: 'Email or Username already exists' });
     }
 
     const user = await User.create({
       name,
       email,
       password,
-      phone,
+      location,
+      username,
     });
 
     if (user) {
@@ -26,8 +33,9 @@ const registerUser = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
-        phone: user.phone,
+        username: user.username,
         role: user.role,
+        location: user.location,
         token: generateToken(user._id),
       });
     } else {
@@ -38,22 +46,24 @@ const registerUser = async (req, res) => {
   }
 };
 
-// @desc    Auth user & get token
+// @desc    Authenticate user & get token
 // @route   POST /api/auth/login
 // @access  Public
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email });
 
-    if (user && (await user.matchPassword(password))) {
+    if (user && (await user.comparePassword(password))) {
       res.json({
         _id: user._id,
         name: user.name,
         email: user.email,
-        phone: user.phone,
+        username: user.username,
         role: user.role,
+        profilePhoto: user.profilePhoto,
+        location: user.location,
         token: generateToken(user._id),
       });
     } else {
@@ -69,19 +79,9 @@ const loginUser = async (req, res) => {
 // @access  Private
 const getUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
-
+    const user = await User.findById(req.user._id).select('-password');
     if (user) {
-      res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        location: user.location,
-        profilePhoto: user.profilePhoto,
-        bio: user.bio,
-        role: user.role,
-      });
+      res.json(user);
     } else {
       res.status(404).json({ message: 'User not found' });
     }
@@ -90,7 +90,7 @@ const getUserProfile = async (req, res) => {
   }
 };
 
-// @desc    Update user profile & location
+// @desc    Update user profile
 // @route   PUT /api/auth/profile
 // @access  Private
 const updateUserProfile = async (req, res) => {
@@ -99,24 +99,13 @@ const updateUserProfile = async (req, res) => {
 
     if (user) {
       user.name = req.body.name || user.name;
-      user.phone = req.body.phone || user.phone;
+      user.email = req.body.email || user.email;
+      user.username = req.body.username || user.username;
+      user.bio = req.body.bio || user.bio;
       user.profilePhoto = req.body.profilePhoto || user.profilePhoto;
-      user.bio = req.body.bio !== undefined ? req.body.bio : user.bio;
-
+      
       if (req.body.location) {
-        user.location = {
-          city: req.body.location.city,
-          area: req.body.location.area,
-          pincode: req.body.location.pincode,
-        };
-
-        // If coordinates provided:
-        if (req.body.location.lng && req.body.location.lat) {
-          user.location.coordinates = {
-            type: 'Point',
-            coordinates: [req.body.location.lng, req.body.location.lat],
-          };
-        }
+        user.location = { ...user.location, ...req.body.location };
       }
 
       if (req.body.password) {
@@ -129,10 +118,10 @@ const updateUserProfile = async (req, res) => {
         _id: updatedUser._id,
         name: updatedUser.name,
         email: updatedUser.email,
-        phone: updatedUser.phone,
-        location: updatedUser.location,
+        username: updatedUser.username,
+        role: updatedUser.role,
         profilePhoto: updatedUser.profilePhoto,
-        bio: updatedUser.bio,
+        location: updatedUser.location,
         token: generateToken(updatedUser._id),
       });
     } else {
@@ -143,56 +132,55 @@ const updateUserProfile = async (req, res) => {
   }
 };
 
-// @desc    Get all community users (local-first)
+// @desc    Get all community users (filtered by search)
 // @route   GET /api/auth/users
 // @access  Private
 const getAllCommunityUsers = async (req, res) => {
   try {
     const { search } = req.query;
-    let query = { _id: { $ne: req.user._id }, status: 'active' };
+    let query = { _id: { $ne: req.user._id } };
 
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
-        { 'location.city': { $regex: search, $options: 'i' } },
-        { 'location.area': { $regex: search, $options: 'i' } },
-        { 'location.pincode': { $regex: search, $options: 'i' } },
+        { username: { $regex: search, $options: 'i' } },
       ];
     }
 
     const users = await User.find(query)
-      .select('name profilePhoto bio location role')
-      .sort({ createdAt: -1 });
+      .select('name username profilePhoto location role')
+      .sort({ 'location.pincode': 1 }); // Sort by proximity (simple)
 
-    // Sort local users first (same pincode > same city > others)
-    const userPincode = req.user?.location?.pincode;
-    const userCity = req.user?.location?.city;
-
-    const sorted = users.sort((a, b) => {
-      const aLocal = a.location?.pincode === userPincode ? 2 : a.location?.city === userCity ? 1 : 0;
-      const bLocal = b.location?.pincode === userPincode ? 2 : b.location?.city === userCity ? 1 : 0;
-      return bLocal - aLocal;
-    });
-
-    res.json(sorted);
+    res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Get user by ID (public profile)
+// @desc    Get user by ID
 // @route   GET /api/auth/users/:id
 // @access  Private
 const getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id)
-      .select('name profilePhoto bio location role createdAt');
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    const user = await User.findById(req.params.id).select('-password');
+    if (user) {
+      res.json(user);
+    } else {
+      res.status(404).json({ message: 'User not found' });
     }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
-    res.json(user);
+// @desc    Check username availability
+// @route   GET /api/auth/check-username/:username
+// @access  Public
+const checkUsernameAvailability = async (req, res) => {
+  try {
+    const { username } = req.params;
+    const user = await User.findOne({ username });
+    res.json({ available: !user });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -205,4 +193,5 @@ module.exports = {
   updateUserProfile,
   getAllCommunityUsers,
   getUserById,
+  checkUsernameAvailability,
 };
