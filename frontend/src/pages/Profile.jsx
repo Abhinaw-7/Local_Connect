@@ -309,11 +309,6 @@ const Profile = () => {
                 )}
               </div>
             </div>
-            {!editing && (
-              <button className="ig-edit-avatar-btn" onClick={() => setEditing(true)}>
-                <Camera size={14} />
-              </button>
-            )}
           </div>
           <div className="ig-profile-info">
             <h1 className="ig-username">{user?.name}</h1>
