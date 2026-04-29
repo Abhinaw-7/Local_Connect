@@ -971,6 +971,28 @@ input, textarea, select {
   position: relative;
   overflow: hidden;
 }
+.ig-edit-avatar-btn {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 30px;
+  height: 30px;
+  background: var(--primary);
+  border: 2px solid var(--bg-card);
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  z-index: 5;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+.ig-edit-avatar-btn:hover {
+  transform: scale(1.1);
+  background: var(--primary-light);
+}
 .ig-avatar-inner.clickable { cursor: pointer; }
 .ig-avatar-img {
   width: 100%;
